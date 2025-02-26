@@ -1889,7 +1889,7 @@ class SCDown(BaseModule):
         return self.cv2(self.cv1(x))
 
 
-class CIB(nn.Module):
+class CIB(BaseModule):
     """Standard bottleneck."""
 
     def __init__(self, c1, c2, shortcut=True, e=0.5, lk=False):
@@ -1906,19 +1906,12 @@ class CIB(nn.Module):
             Conv(c2, c2, 3, g=c2),
         )
 
-        # self.add = shortcut and c1 == c2
-        self.add = True
+        self.add = shortcut and c1 == c2
+
     def forward(self, x):
         """'forward()' applies the YOLO FPN to input data."""
-        # print(f"x before: {x.shape}")
-        # print(self.cv1)
-        x =x + self.cv1(x) if self.add else self.cv1(x)
-        # print(f"x AFTER: {x.shape}")
-        return x
+        return x + self.cv1(x) if self.add else self.cv1(x)
 
-# model = CIB(c1=256, c2=256, shortcut=True, e=0.5, lk=False)
-# x = torch.randn(1, 256, 30, 30)
-# output = model(x)
 
 class C2fCIB(C2f):
     """Faster Implementation of CSP Bottleneck with 2 convolutions."""
@@ -1996,7 +1989,7 @@ import torch
 from mmengine.model import BaseModule
 from typing import Callable, Dict, Optional, Type
 from torch import Tensor
-from timm.models._efficientnet_blocks import UniversalInvertedResidual, MultiSpectralAttentionLayer,OrthoAttentionLayer
+# from timm.models._efficientnet_blocks import *
 ModuleType = Type[nn.Module]
 LayerType = Union[str, Callable, Type[torch.nn.Module]]
 
@@ -2060,42 +2053,42 @@ LayerType = Union[str, Callable, Type[torch.nn.Module]]
 #
 
 
-class UIB_Down(BaseModule):
-    """Faster Implementation of CSP Bottleneck with 2 convolutions."""
-
-    def __init__(self, c1, c2, n=1, shortcut=False, g=1, e=0.5, se_layer = None):
-        """Initialize CSP bottleneck layer with two convolutions with arguments ch_in, ch_out, number, shortcut, groups,
-        expansion.
-        """
-        self.se_layer = se_layer
-        super().__init__()
-
-        self.c = int(c2 * e)  # hidden channels
-        self.cv1 = Conv(c1, 2 * self.c, 1, 1)
-        self.cv2 = Conv((2 + n) * self.c, c2, 1)  # optional act=FReLU(c2)
-        self.m = nn.ModuleList(
-            [UniversalInvertedResidual(self.c, self.c, dw_kernel_size_start=5,dw_kernel_size_mid=0, exp_ratio=4,se_layer=self.se_layer)
-             ]
-        )
-        # self.ex = nn.Identity()
-        # if self.se_layer == 'MultiSpectralAttentionLayer':
-        #     self.ex = MultiSpectralAttentionLayer(c2, 16, 16)
-        # if self.se_layer == 'OrthoAttentionLayer':
-        #     self.ex = OrthoAttentionLayer(c2)
-
-    def forward(self, x):
-        """Forward pass through C2f layer."""
-        # print(f"Input x shape: {x.shape}")
-        # print(self.se_layer)
-        # if self.se_layer is not None:
-        #     print(self.se_layer)
-        y = list(self.cv1(x).chunk(2, 1))
-        y.extend(m(y[-1]) for m in self.m)
-
-        # print(f"Input x_out shape: {self.cv2(torch.cat(y, 1)).shape}")
-        y = self.cv2(torch.cat(y, 1))
-
-        return y
+# class UIB_Down(BaseModule):
+#     """Faster Implementation of CSP Bottleneck with 2 convolutions."""
+#
+#     def __init__(self, c1, c2, n=1, shortcut=False, g=1, e=0.5, se_layer = None):
+#         """Initialize CSP bottleneck layer with two convolutions with arguments ch_in, ch_out, number, shortcut, groups,
+#         expansion.
+#         """
+#         self.se_layer = se_layer
+#         super().__init__()
+#
+#         self.c = int(c2 * e)  # hidden channels
+#         self.cv1 = Conv(c1, 2 * self.c, 1, 1)
+#         self.cv2 = Conv((2 + n) * self.c, c2, 1)  # optional act=FReLU(c2)
+#         self.m = nn.ModuleList(
+#             [UniversalInvertedResidual(self.c, self.c, dw_kernel_size_start=5,dw_kernel_size_mid=0, exp_ratio=4,se_layer=self.se_layer)
+#              ]
+#         )
+#         # self.ex = nn.Identity()
+#         # if self.se_layer == 'MultiSpectralAttentionLayer':
+#         #     self.ex = MultiSpectralAttentionLayer(c2, 16, 16)
+#         # if self.se_layer == 'OrthoAttentionLayer':
+#         #     self.ex = OrthoAttentionLayer(c2)
+#
+#     def forward(self, x):
+#         """Forward pass through C2f layer."""
+#         # print(f"Input x shape: {x.shape}")
+#         # print(self.se_layer)
+#         # if self.se_layer is not None:
+#         #     print(self.se_layer)
+#         y = list(self.cv1(x).chunk(2, 1))
+#         y.extend(m(y[-1]) for m in self.m)
+#
+#         # print(f"Input x_out shape: {self.cv2(torch.cat(y, 1)).shape}")
+#         y = self.cv2(torch.cat(y, 1))
+#
+#         return y
 
     # def forward_split(self, x):
     #     """Forward pass using split() instead of chunk()."""

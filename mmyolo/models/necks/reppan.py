@@ -7,9 +7,9 @@ from mmyolo.models.necks.common2 import RepVGGBlock, BottleRep, BepC3, RepBlock,
 from timm.models.repvit import RepViTBlock
 from mmyolo.models.necks.layers import Conv
 from mmyolo.models.necks.common import AdvPoolFusion, SimFusion_3in, SimFusion_4in
-from mmyolo.models.necks.transformer import PyramidPoolAgg, TopBasicLayer, InjectionMultiSum_Auto_pool
+from mmyolo.models.necks.transformer import PyramidPoolAgg, TopBasicLayer, InjectionMultiSum_Auto_pool,Attention
 from mmyolo.registry import MODELS
-
+from mmyolo.models.modules import HGBlock,RepC3,GhostBottleneck,SPPF,C2f,C2fCIB
 
 @MODELS.register_module()
 class RepGDNeck(nn.Module):
@@ -17,11 +17,14 @@ class RepGDNeck(nn.Module):
             self,
             channels_list=None,
             num_repeats=None,
-            block=RepVGGBlock,
+            # block=RepVGGBlock,
+            block=HGBlock,
             extra_cfg=None
     ):
         super().__init__()
-        print(extra_cfg.fusion_in)
+        # print(extra_cfg.fusion_in)
+        if isinstance(block, str):
+            block = eval(block)
         assert channels_list is not None
         assert num_repeats is not None
         
@@ -76,7 +79,7 @@ class RepGDNeck(nn.Module):
         )
         
         self.high_FAM = PyramidPoolAgg(stride=extra_cfg.c2t_stride, pool_mode=extra_cfg.pool_mode)
-        # dpr = [x.item() for x in torch.linspace(0, extra_cfg.drop_path_rate, extra_cfg.depths)]
+        dpr = [x.item() for x in torch.linspace(0, extra_cfg.drop_path_rate, extra_cfg.depths)]
         # self.high_IFM = TopBasicLayer(
         #         block_num=extra_cfg.depths,
         #         embedding_dim=extra_cfg.embed_dim_n,
@@ -88,10 +91,18 @@ class RepGDNeck(nn.Module):
         #         drop_path=dpr,
         #         norm_cfg=extra_cfg.norm_cfg
         # )
+        # self.high_IFM = nn.Sequential(
+        #         Conv(extra_cfg.embed_dim_n, extra_cfg.embed_dim_n, kernel_size=1, stride=1, padding=0),
+        #         *[block(extra_cfg.embed_dim_n, extra_cfg.embed_dim_n) for _ in range(extra_cfg.fuse_block_num)],
+        #         Conv(extra_cfg.embed_dim_n, extra_cfg.embed_dim_n,
+        #              kernel_size=1, stride=1, padding=0),
+        # )
+        # self.high_IFM = RepViTBlock(
+        #     extra_cfg.embed_dim_n, mlp_ratio=2, kernel_size=5, use_se=True, act_layer=nn.GELU
+        # )
         self.high_IFM = nn.Sequential(
                 Conv(extra_cfg.embed_dim_n, sum(extra_cfg.trans_channels[2:4]), kernel_size=1, stride=1, padding=0),
-                # 查看repvitblock的kernelsize是否为5
-                *[RepViTBlock(sum(extra_cfg.trans_channels[2:4]) , mlp_ratio=2, kernel_size=5, use_se=True, act_layer=nn.GELU) for _ in range(extra_cfg.fuse_block_num)],
+                *[RepViTBlock(sum(extra_cfg.trans_channels[2:4]), mlp_ratio=2, kernel_size=5, use_se=True, act_layer=nn.GELU) for _ in range(extra_cfg.fuse_block_num)],
                 Conv(sum(extra_cfg.trans_channels[2:4]), sum(extra_cfg.trans_channels[2:4]),
                      kernel_size=1, stride=1, padding=0),
         )
@@ -104,6 +115,7 @@ class RepGDNeck(nn.Module):
                 in_channels=channels_list[6] + channels_list[7],  # 128 + 128
                 out_channels=channels_list[8],  # 256
                 n=num_repeats[2],
+
                 block=block
         )
         
@@ -429,11 +441,10 @@ class RepGDNeck_repvit(nn.Module):
 #     'num_heads': 4,
 #     'mlp_ratios': 1,
 #     'attn_ratios': 2,
-#     'c2t_stride': 1,
+#     'c2t_stride': 2,
 #     'drop_path_rate': 0.1,
-#     # 'trans_channels': [80, 48, 96, 176],
+#     'trans_channels': [80, 48, 96, 176],
 #     # 'trans_channels': [64, 32, 64, 128],
-#     'trans_channels': [128, 64, 128, 256],
 #
 #     'pool_mode': 'torch'
 # }
@@ -443,8 +454,8 @@ class RepGDNeck_repvit(nn.Module):
 # model = RepGDNeck(
 #
 #     # channels_list=[48, 48, 96, 192, 384, 96, 48, 48, 96, 96, 192],
-#     channels_list=[32,  32,  64,  96,  960, 128, 64, 64, 128, 128, 256],
-#     # channels_list=[32,  48,  80,  160,  960, 80, 48,48, 96, 96, 176],
+#     # channels_list=[32,  32,  64,  96,  960, 128, 64, 64, 128, 128, 256],
+#     channels_list=[32,  48,  80,  160,  960, 80, 48,48, 96, 96, 176],
 #
 #     # channels_list=[16, 32, 64, 128, 256, 64, 32, 32, 64, 64, 128],
 #     num_repeats=[2, 2,2, 2],
@@ -469,7 +480,7 @@ class RepGDNeck_repvit(nn.Module):
 # # 打印输出
 # for i, out in enumerate(output):
 #     print(f'Output {i}: {out.shape}')
-#
+
 
 @MODELS.register_module()
 class GDNeck(nn.Module):

@@ -43,7 +43,7 @@ class Mlp(nn.Module):
 class Attention(torch.nn.Module):
     def __init__(self, dim, key_dim, num_heads,
                  attn_ratio=4,
-                 activation=None,
+                 activation=nn.ReLU,
                  norm_cfg=dict(type='BN', requires_grad=True), ):
         super().__init__()
         self.num_heads = num_heads

@@ -337,14 +337,14 @@ class BoxAMDetectorVisualizer:
             else:
                 text = self.classes[label]
 
-            # cv2.putText(
-            #     image,
-            #     text, (int(box[0]), int(box[1] - 5)),
-            #     cv2.FONT_HERSHEY_SIMPLEX,
-            #     0.5,
-            #     color,
-            #     1,
-            #     lineType=cv2.LINE_AA)
+            cv2.putText(
+                image,
+                text, (int(box[0]), int(box[1] - 5)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                color,
+                1,
+                lineType=cv2.LINE_AA)
         return image
 
 
